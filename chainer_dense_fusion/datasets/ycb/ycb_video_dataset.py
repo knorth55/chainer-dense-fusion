@@ -103,14 +103,14 @@ class YCBVideoDataset(GetterDataset):
         plt.show()
 
     def visualize_3d(self, i):
-        pcds = []
         img = self._get_image(i)
         depth = self._get_depth(i)
         label = self._get_label(i)
         pose = self._get_pose(i)
-        _, H, W = img.shape
+        pcds = []
 
         # camera pcd
+        _, H, W = img.shape
         intrinsic = self._get_intrinsic(i, H, W)
         img = open3d.Image(img.transpose((1, 2, 0)).astype(np.uint8))
         depth = open3d.Image(depth[0])
