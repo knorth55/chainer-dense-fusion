@@ -1,0 +1,4 @@
+chainer
+chainercv
+numpy
+open3d-python
