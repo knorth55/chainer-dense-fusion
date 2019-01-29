@@ -22,10 +22,10 @@ this_dir = osp.dirname(osp.realpath(__file__))
 
 class YCBVideoDataset(GetterDataset):
 
-    def __init__(self, split='val'):
-        if split not in ['val']:
+    def __init__(self, split='train'):
+        if split not in ['train', 'val']:
             raise ValueError(
-                'YCB dataset split {} is not supported'.format(split))
+                'YCB video dataset split {} is not supported'.format(split))
         super(YCBVideoDataset, self).__init__()
 
         self.data_dir = download.get_dataset_directory(ycb_root)
@@ -40,6 +40,7 @@ class YCBVideoDataset(GetterDataset):
         self.add_getter('depth', self._get_depth)
         self.add_getter('label', self._get_label)
         self.add_getter('pose', self._get_pose)
+        self.keys = ('img', 'depth', 'label', 'pose')
 
     def __len__(self):
         return len(self.ids)
@@ -140,8 +141,14 @@ class YCBVideoDataset(GetterDataset):
 class YCBVideoDatasetPoseCNNSegmented(YCBVideoDataset):
 
     def __init__(self, split='val'):
+        if split != 'val':
+            raise ValueError(
+                'YCB video segmented dataset split {} is not supported'
+                .format(split))
+
         super(YCBVideoDatasetPoseCNNSegmented, self).__init__(split)
         self.add_getter('lbl_img', self._get_lbl_img)
+        self.keys = ('img', 'depth', 'lbl_img', 'label', 'pose')
 
     def _get_lbl_img(self, i):
         datapath = osp.join(
