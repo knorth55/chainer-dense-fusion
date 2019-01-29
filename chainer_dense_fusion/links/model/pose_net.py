@@ -82,8 +82,11 @@ class PSPNetResNet18Extractor(chainer.Chain):
         with self.init_scope():
             self.extractor = ResNet18Extractor()
             self.psp = PSPModule(2048, 1024, sizes)
+            # 1/8 -> 1/4
             self.up1 = PSPUpsample(1024, 256)
+            # 1/4 -> 1/2
             self.up2 = PSPUpsample(256, 64)
+            # 1/2 -> 1
             self.up3 = PSPUpsample(64, 64)
             self.conv1 = L.Convolution2D(64, 32, 1)
 
