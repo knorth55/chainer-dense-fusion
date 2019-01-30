@@ -57,7 +57,7 @@ class YCBVideoDataset(GetterDataset):
         depthpath = osp.join(self.data_dir, '{}-depth.png'.format(self.ids[i]))
         depth = np.asarray(Image.open(depthpath)).astype(np.float32)
         depth_scale = self._get_depth_scale(i)
-        depth = depth[None] / depth_scale
+        depth = depth / depth_scale
         return depth
 
     def _get_label(self, i):
@@ -104,7 +104,7 @@ class YCBVideoDataset(GetterDataset):
         fx, fy, cx, cy = self._get_intrinsic(i)
         intrinsic = PinholeCameraIntrinsic(W, H, fx, fy, cx, cy)
         img = open3d.Image(img.transpose((1, 2, 0)).astype(np.uint8))
-        depth = open3d.Image(depth[0])
+        depth = open3d.Image(depth)
         rgbd = create_rgbd_image_from_color_and_depth(
             img, depth, depth_scale=1.0, convert_rgb_to_intensity=False)
         pcd = create_point_cloud_from_rgbd_image(rgbd, intrinsic)
@@ -115,7 +115,7 @@ class YCBVideoDataset(GetterDataset):
         depth = self._get_depth(i)
         f, axes = plt.subplots(1, 2, sharey=True)
         vis_image(img, ax=axes[0])
-        axes[1].imshow(depth[0])
+        axes[1].imshow(depth)
         plt.show()
 
     def visualize_3d(self, i):
@@ -158,7 +158,7 @@ class YCBVideoDatasetPoseCNNSegmented(YCBVideoDataset):
         lbl_img = self._get_lbl_img(i)
         f, axes = plt.subplots(1, 3, sharey=True)
         vis_image(img, ax=axes[0])
-        axes[1].imshow(depth[0])
+        axes[1].imshow(depth)
         _, legend_handles = vis_semantic_segmentation(
             img, lbl_img + 1,
             label_names=['background'] + self.label_names, ax=axes[2])
