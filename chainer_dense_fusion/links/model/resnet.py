@@ -1,6 +1,7 @@
 import chainer
 import chainer.functions as F
 import chainer.links as L
+from chainercv.links import PickableSequentialChain
 
 
 class ResNet18Extractor(chainer.Chain):
@@ -16,7 +17,7 @@ class ResNet18Extractor(chainer.Chain):
 
     def __call__(self, img):
         # 1 -> 1/2
-        h = self.relu(self.conv1(img))
+        h = F.relu(self.conv1(img))
         # 1/2 -> 1/4
         h = F.max_pooling_2d(h, ksize=3, stride=2)
         # 1/4 -> 1/8
@@ -27,7 +28,7 @@ class ResNet18Extractor(chainer.Chain):
         return h
 
 
-class ResBlock(chainer.Chain):
+class ResBlock(PickableSequentialChain):
 
     def __init__(self, n_layer, in_channels, out_channels,
                  stride, dilate=1, residual_conv=True, initialW=None):

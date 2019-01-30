@@ -4,7 +4,7 @@ import chainer.functions as F
 import chainer.links as L
 import numpy as np
 
-from chainercv.utils.mask import mask_to_bbox
+from chainercv.utils.mask.mask_to_bbox import mask_to_bbox
 
 from chainer_dense_fusion.links.model.pspnet import PSPNetExtractor
 from chainer_dense_fusion.links.model.resnet import ResNet18Extractor
@@ -129,6 +129,7 @@ class PoseNet(chainer.Chain):
                 if lbl < 0:
                     continue
                 bb = mask_to_bbox((lbl_img == lbl)[None])[0]
+                bb = bb.astype(np.int32)
                 ymin, xmin, ymax, xmax = bb
                 masked_img = img[:, ymin:ymax, xmin:xmax]
                 msk = np.logical_and(lbl_img == lbl, depth != 0)
@@ -142,7 +143,7 @@ class PoseNet(chainer.Chain):
                     pcd_indice = np.pad(
                         pcd_indice,
                         (0, self.n_point - len(pcd_indice)), 'wrap')
-                pcd = organized_pcd[:, ymin:ymax, xmin:xmax].flatten()
+                pcd = organized_pcd[:, ymin:ymax, xmin:xmax].reshape((3, -1))
                 masked_pcd = pcd[:, pcd_indice]
 
                 with chainer.using_config('train', False), \

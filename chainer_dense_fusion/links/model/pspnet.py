@@ -71,7 +71,7 @@ class PSPUpsample(chainer.Chain):
             self.conv = L.Convolution2D(in_channels, out_channels, 3, 1)
             self.prelu = L.PReLU((1,))
 
-    def __call___(self, x):
+    def __call__(self, x):
         H, W = x.shape[2:]
         h = F.resize_images(x, (H*2, W*2))
         h = self.prelu(self.conv(h))
