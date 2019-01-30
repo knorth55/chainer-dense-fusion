@@ -92,6 +92,36 @@ def torch2chainer(model, params):
                 model.pspnet_extractor.psp, 'conv{}'.format(layer_num))
             copy_layer(layer, params, param_name, param_type)
             uncopied_param_names.remove(param_name)
+        # pspnet resnet conv1
+        elif param_name.startswith('cnn.model.module.feats.conv1'):
+            param_type = param_name.split('.')[-1]
+            layer = model.pspnet_extractor.extractor.conv1
+            copy_layer(layer, params, param_name, param_type)
+            uncopied_param_names.remove(param_name)
+        # pspnet resnet2-5
+        elif param_name.startswith('cnn.model.module.feats.layer'):
+            if param_name.split('.')[6].startswith('conv'):
+                param_resblock_name, block_num, layer_name, param_type = \
+                    param_name.split('.')[4:]
+            elif param_name.split('.')[6].startswith('downsample'):
+                param_resblock_name, block_num, _, _, param_type = \
+                    param_name.split('.')[4:]
+                layer_name = 'residual_conv'
+            else:
+                raise ValueError(
+                    'param: {} is not supported'.format(param_name))
+            resblock_num = int(param_resblock_name[-1]) + 1
+            resblock = getattr(
+                model.pspnet_extractor.extractor, 'res{}'.format(resblock_num))
+            block_num = int(block_num)
+            if block_num == 0:
+                block_name = 'a'
+            else:
+                block_name = 'b{}'.format(block_num)
+            block = getattr(resblock, block_name)
+            layer = getattr(block, layer_name)
+            copy_layer(layer, params, param_name, param_type)
+            uncopied_param_names.remove(param_name)
 
     print('')
     if len(uncopied_param_names) > 0:
