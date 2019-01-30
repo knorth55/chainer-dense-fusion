@@ -10,7 +10,8 @@ class PoseNet(chainer.Chain):
         super(PoseNet, self).__init__()
         with self.init_scope():
             # extractor
-            self.pspnet_extractor = PSPNetResNet18Extractor()
+            self.resnet_extractor = ResNet18Extractor()
+            self.pspnet_extractor = PSPNetExtractor()
             self.posenet_extractor = PoseNetExtractor(n_point)
             # conv1
             self.conv1_rot = L.Convolution1D(1408, 640, 1)
@@ -34,8 +35,10 @@ class PoseNet(chainer.Chain):
 
     def __call__(self, img, pcd, pcd_indice, lbl):
         assert img.shape[0] == 1
+        # resnet extractor
+        h_img = self.resnet_extractor(img)
         # pspnet extractor
-        h_img = self.pspnet_extractor(img)
+        h_img = self.pspnet_extractor(h_img)
         # posenet extractor
         B, C = h_img.shape[:2]
         h_img = h_img.reshape((B, C, -1))
@@ -72,13 +75,12 @@ class PoseNet(chainer.Chain):
         return 0
 
 
-class PSPNetResNet18Extractor(chainer.Chain):
+class PSPNetExtractor(chainer.Chain):
 
     def __init__(self):
-        super(PSPNetResNet18Extractor, self).__init__()
+        super(PSPNetExtractor, self).__init__()
         sizes = [1, 2, 3, 6]
         with self.init_scope():
-            self.extractor = ResNet18Extractor()
             self.psp = PSPModule(512, 1024, sizes)
             # 1/8 -> 1/4
             self.up1 = PSPUpsample(1024, 256)
@@ -88,11 +90,9 @@ class PSPNetResNet18Extractor(chainer.Chain):
             self.up3 = PSPUpsample(64, 64)
             self.conv1 = L.Convolution2D(64, 32, 1)
 
-    def __call__(self, img):
-        # resnet extractor
-        h = self.extractor(img)
+    def __call__(self, x):
         # psp module
-        h = self.psp(h)
+        h = self.psp(x)
         h = F.dropout(h, 0.3)
         # upsample
         h = F.dropout(self.up1(h), 0.15)
