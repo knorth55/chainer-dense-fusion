@@ -76,7 +76,7 @@ class PoseNet(chainer.Chain):
 
 class PSPNetResNet18Extractor(chainer.Chain):
 
-    def __init__(self, img_size):
+    def __init__(self):
         super(PSPNetResNet18Extractor, self).__init__()
         sizes = [1, 2, 3, 6]
         with self.init_scope():
@@ -146,7 +146,7 @@ class PoseNetExtractor(chainer.Chain):
 class ResNet18Extractor(chainer.Chain):
 
     def __init__(self):
-        super(ResNet18Extractor).__init__()
+        super(ResNet18Extractor, self).__init__()
         with self.init_scope():
             self.conv1 = L.Convolution2D(3, 64, 7, 2, 3, nobias=True)
             self.res2 = ResBlock(2, 64, 64, 256, 1, 1)
