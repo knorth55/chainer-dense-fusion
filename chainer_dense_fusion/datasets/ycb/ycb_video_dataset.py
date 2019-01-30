@@ -40,7 +40,8 @@ class YCBVideoDataset(GetterDataset):
         self.add_getter('depth', self._get_depth)
         self.add_getter('label', self._get_label)
         self.add_getter('pose', self._get_pose)
-        self.keys = ('img', 'depth', 'label', 'pose')
+        self.add_getter('intrinsic', self._get_intrinsic)
+        self.keys = ('img', 'depth', 'label', 'pose', 'intrinsic')
 
     def __len__(self):
         return len(self.ids)
@@ -78,42 +79,34 @@ class YCBVideoDataset(GetterDataset):
         depth_scale = scipy.io.loadmat(metapath)['factor_depth'][0][0]
         return depth_scale
 
-    def _get_intrinsic(self, i, img_height, img_width):
+    def _get_intrinsic(self, i):
         metapath = osp.join(self.data_dir, '{}-meta.mat'.format(self.ids[i]))
         intrinsic_matrix = scipy.io.loadmat(metapath)['intrinsic_matrix']
         fx = intrinsic_matrix[0][0]
         fy = intrinsic_matrix[1][1]
         cx = intrinsic_matrix[0][2]
         cy = intrinsic_matrix[1][2]
-        intrinsic = PinholeCameraIntrinsic(
-            img_width, img_height, fx, fy, cx, cy)
-        return intrinsic
+        return fx, fy, cx, cy
 
-    def _get_object_pcd(self, lbl):
+    def get_object_pcd(self, lbl, pse):
         xyzpath = osp.join(
             self.data_dir,
             './models/{}/points.xyz'.format(self.label_names[lbl]))
         obj_pcd = open3d.read_point_cloud(xyzpath)
+        obj_pcd.transform(pse.transpose((1, 0)))
+        obj_pcd.transform(
+            [[1, 0, 0, 0],
+             [0, -1, 0, 0],
+             [0, 0, -1, 0],
+             [0, 0, 0, 1]])
         return obj_pcd
 
-    def visualize(self, i):
+    def get_camera_pcd(self, i):
         img = self._get_image(i)
         depth = self._get_depth(i)
-        f, axes = plt.subplots(1, 2, sharey=True)
-        vis_image(img, ax=axes[0])
-        axes[1].imshow(depth[0])
-        plt.show()
-
-    def visualize_3d(self, i):
-        img = self._get_image(i)
-        depth = self._get_depth(i)
-        label = self._get_label(i)
-        pose = self._get_pose(i)
-        pcds = []
-
-        # camera pcd
         _, H, W = img.shape
-        intrinsic = self._get_intrinsic(i, H, W)
+        fx, fy, cx, cy = self._get_intrinsic(i)
+        intrinsic = PinholeCameraIntrinsic(W, H, fx, fy, cx, cy)
         img = open3d.Image(img.transpose((1, 2, 0)).astype(np.uint8))
         depth = open3d.Image(depth[0])
         rgbd = create_rgbd_image_from_color_and_depth(
@@ -124,17 +117,27 @@ class YCBVideoDataset(GetterDataset):
              [0, -1, 0, 0],
              [0, 0, -1, 0],
              [0, 0, 0, 1]])
+        return pcd
+
+    def visualize(self, i):
+        img = self._get_image(i)
+        depth = self._get_depth(i)
+        f, axes = plt.subplots(1, 2, sharey=True)
+        vis_image(img, ax=axes[0])
+        axes[1].imshow(depth[0])
+        plt.show()
+
+    def visualize_3d(self, i):
+        label = self._get_label(i)
+        pose = self._get_pose(i)
+        pcds = []
+        # camera pcd
+        pcd = self.get_camera_pcd(i)
         pcds.append(pcd)
 
         # model pcd
         for lbl, pse in zip(label, pose):
-            obj_pcd = self._get_object_pcd(lbl)
-            obj_pcd.transform(pse.transpose((1, 0)))
-            obj_pcd.transform(
-                [[1, 0, 0, 0],
-                 [0, -1, 0, 0],
-                 [0, 0, -1, 0],
-                 [0, 0, 0, 1]])
+            obj_pcd = self.get_object_pcd(lbl, pse)
             pcds.append(obj_pcd)
         open3d.draw_geometries(pcds)
 
@@ -149,7 +152,7 @@ class YCBVideoDatasetPoseCNNSegmented(YCBVideoDataset):
 
         super(YCBVideoDatasetPoseCNNSegmented, self).__init__(split)
         self.add_getter('lbl_img', self._get_lbl_img)
-        self.keys = ('img', 'depth', 'lbl_img', 'label', 'pose')
+        self.keys = ('img', 'depth', 'lbl_img', 'label', 'pose', 'intrinsic')
 
     def _get_lbl_img(self, i):
         datapath = osp.join(
