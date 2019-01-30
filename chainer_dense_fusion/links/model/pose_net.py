@@ -81,7 +81,7 @@ class PSPNetResNet18Extractor(chainer.Chain):
         sizes = [1, 2, 3, 6]
         with self.init_scope():
             self.extractor = ResNet18Extractor()
-            self.psp = PSPModule(2048, 1024, sizes)
+            self.psp = PSPModule(512, 1024, sizes)
             # 1/8 -> 1/4
             self.up1 = PSPUpsample(1024, 256)
             # 1/4 -> 1/2
@@ -203,9 +203,10 @@ class PSPUpsample(chainer.Chain):
         super(PSPUpsample, self).__init__()
         with self.init_scope():
             self.conv = L.Convolution2D(in_channels, out_channels, 3, 1)
+            self.prelu = L.PReLU((1,))
 
     def __call___(self, x):
         H, W = x.shape[2:]
         h = F.resize_images(x, (H*2, W*2))
-        h = F.prelu(self.conv(h))
+        h = self.prelu(self.conv(h))
         return h
