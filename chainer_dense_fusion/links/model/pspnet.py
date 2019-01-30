@@ -69,7 +69,7 @@ class PSPUpsample(chainer.Chain):
         super(PSPUpsample, self).__init__()
         with self.init_scope():
             self.conv = L.Convolution2D(in_channels, out_channels, 3, 1)
-            self.prelu = L.PReLU((1,))
+            self.prelu = L.PReLU()
 
     def __call__(self, x):
         H, W = x.shape[2:]

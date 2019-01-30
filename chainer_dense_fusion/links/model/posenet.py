@@ -62,6 +62,8 @@ class PoseNet(chainer.Chain):
 
     def __call__(self, img, pcd, pcd_indice):
         assert img.shape[0] == 1
+        pcd_indice = pcd_indice.array
+
         # resnet extractor
         h_img = self.resnet_extractor(img)
         # pspnet extractor
@@ -69,7 +71,7 @@ class PoseNet(chainer.Chain):
         # posenet extractor
         B, C = h_img.shape[:2]
         h_img = h_img.reshape((B, C, -1))
-        h_img = h_img[:, :, pcd_indice]
+        h_img = h_img[:, :, pcd_indice].reshape((B, C, self.n_point))
 
         h = self.posenet_extractor(h_img, pcd)
         # conv1
@@ -97,7 +99,7 @@ class PoseNet(chainer.Chain):
         img = ((img - self.mean) / self.std).astype(np.float32, copy=False)
         return img
 
-    def predict(self, imgs, depths, lbl_imgs, intrinsics):
+    def predict(self, imgs, depths, lbl_imgs, bboxes, labels, intrinsics):
         prepared_imgs = []
         for img in imgs:
             img = self.prepare(img.astype(np.float32))
@@ -134,6 +136,8 @@ class PoseNet(chainer.Chain):
                 masked_img = img[:, ymin:ymax, xmin:xmax]
                 msk = np.logical_and(lbl_img == lbl, depth != 0)
                 pcd_indice = np.where(msk[ymin:ymax, xmin:xmax].flatten())[0]
+                if len(pcd_indice) == 0:
+                    continue
                 if len(pcd_indice) > self.n_point:
                     pcd_indice_msk = np.zeros(len(pcd_indice), dtype=bool)
                     pcd_indice_msk[:self.n_point] = True
@@ -157,27 +161,31 @@ class PoseNet(chainer.Chain):
                     cls_rot, cls_trans, cls_conf = \
                         self.__call__(
                             masked_img_var, masked_pcd_var, pcd_indice_var)
+
+                # variable -> cpu array
+                rot = cuda.to_cpu(cls_rot.array)[0, lbl]
+                trans = cuda.to_cpu(cls_trans.array)[0, lbl]
+                conf = cuda.to_cpu(cls_conf.array)[0, lbl]
+
                 # (B, C, 4, N) -> (N, 4)
-                rot = cls_rot[0, lbl].transpose((1, 0))
-                rot = rot / self.xp.norm(rot, axis=1)[:, None]
+                rot = rot.transpose((1, 0))
+                rot = rot / np.linalg.norm(rot, axis=1)[:, None]
                 # (B, C, 3, N) -> (N, 3)
-                trans = cls_trans[0, lbl].transpose((1, 0))
-                trans = trans + pcd.transpose((1, 0))
-                # (B, C, N) -> (N, )
-                conf = cls_conf[0, lbl]
+                trans = trans.transpose((1, 0))
+                trans = trans + masked_pcd.transpose((1, 0))
 
                 # get max conf value
-                maxid = self.xp.argmax(conf)
-                max_conf = cuda.to_cpu(conf[maxid])
-                max_rot = cuda.to_cpu(rot[maxid])
-                max_trans = cuda.to_cpu(trans[maxid])
+                maxid = np.argmax(conf)
+                max_conf = conf[maxid]
+                max_rot = rot[maxid]
+                max_trans = trans[maxid]
 
                 # quaternion -> rotation matrix
                 pse = quaternion_to_rotation_matrix(max_rot)
                 pse[3, :3] = max_trans
 
                 pose.append(pse[None])
-                label.append(label)
+                label.append(lbl)
                 score.append(max_conf)
 
             pose = np.concatenate(pose, axis=0)
@@ -221,6 +229,6 @@ class PoseNetExtractor(chainer.Chain):
         h = F.average_pooling_1d(h, self.n_point)
         B = h.shape[0]
         h = h.reshape((B, 1024, 1))
-        feat3 = h.repeat(h, self.n_point, axis=2)
+        feat3 = F.repeat(h, self.n_point, axis=2)
         feat = F.concat((feat1, feat2, feat3), axis=1)
         return feat

@@ -69,15 +69,20 @@ def torch2chainer(model, params):
             layer_num = int(layer_num)
             if layer_num == 1:
                 layer_name = 'conv'
+                layer = getattr(
+                    getattr(model.pspnet_extractor, module_name), layer_name)
+                copy_layer(layer, params, param_name, param_type)
+                uncopied_param_names.remove(param_name)
             elif layer_num == 2:
                 layer_name = 'prelu'
+                layer = getattr(
+                    getattr(model.pspnet_extractor, module_name), layer_name)
+                param = np.asarray(params[param_name])
+                layer.W.array = np.array(param[0], dtype=np.float32)
+                uncopied_param_names.remove(param_name)
             else:
                 raise ValueError(
                     'param: {} is not supported'.format(param_name))
-            layer = getattr(
-                getattr(model.pspnet_extractor, module_name), layer_name)
-            copy_layer(layer, params, param_name, param_type)
-            uncopied_param_names.remove(param_name)
         # pspnet bottleneck
         elif param_name.startswith('cnn.model.module.psp.bottleneck'):
             param_type = param_name.split('.')[-1]
