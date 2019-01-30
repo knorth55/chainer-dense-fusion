@@ -128,8 +128,29 @@ class PoseNet(chainer.Chain):
             for bb, lbl in zip(bbox, bbox_label):
                 if lbl < 0:
                     continue
-                bb = np.round(bb).astype(np.int32)
-                ymin, xmin, ymax, xmax = bb
+
+                # format bbox size
+                bb_h = (bb[2] - bb[0] // 40 + 1) * 40
+                bb_w = (bb[3] - bb[1] // 40 + 1) * 40
+                bb_yc = ((bb[2] + bb[0]) / 2).astype(np.int32)
+                bb_xc = ((bb[3] + bb[1]) / 2).astype(np.int32)
+                ymin = bb_yc - (bb_h / 2).astype(np.int32)
+                ymax = bb_yc + (bb_h / 2).astype(np.int32)
+                xmin = bb_xc - (bb_w / 2).astype(np.int32)
+                xmax = bb_xc + (bb_w / 2).astype(np.int32)
+                if ymin < 0:
+                    ymax = ymax - ymin
+                    ymin = 0
+                if ymax > H:
+                    ymin = ymin - ymax + H
+                    ymax = H
+                if xmin < 0:
+                    xmax = xmax - xmin
+                    xmin = 0
+                if xmax > W:
+                    xmin = xmin - xmax + W
+                    xmax = W
+
                 masked_img = img[:, ymin:ymax, xmin:xmax]
                 msk = np.logical_and(lbl_img == lbl, depth != 0)
                 pcd_indice = np.where(msk[ymin:ymax, xmin:xmax].flatten())[0]

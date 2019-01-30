@@ -162,33 +162,9 @@ class YCBVideoDatasetPoseCNNSegmented(YCBVideoDataset):
         img = self._get_image(i)
         _, H, W = img.shape
         rois = np.array(data['rois'][:, 2:6], dtype=np.float32)
-        rois = rois[:, [1, 0, 3, 2]]
-        rois[:, :2] = rois[:, :2] + 1
-        rois[:, 2:] = rois[:, 2:] - 1
-        rois_yc = ((rois[:, 2:3] + rois[:, 0:1]) / 2).astype(np.int32)
-        rois_h = rois[:, 2:3] - rois[:, 0:1]
-        rois_h = (rois_h // 40 + 1) * 40
-        rois_w = rois[:, 3:4] - rois[:, 1:2]
-        rois_w = (rois_w // 40 + 1) * 40
-        rois_xc = ((rois[:, 3:4] + rois[:, 1:2]) / 2).astype(np.int32)
-        bbox = np.concatenate(
-            (rois_yc - (rois_h / 2).astype(np.int32),
-             rois_xc - (rois_w / 2).astype(np.int32),
-             rois_yc + (rois_h / 2).astype(np.int32),
-             rois_xc + (rois_w / 2).astype(np.int32)), axis=1)
-        for bb in bbox:
-            if bb[0] < 0:
-                bb[2] = bb[2] - bb[0]
-                bb[0] = 0
-            if bb[1] < 0:
-                bb[3] = bb[3] - bb[1]
-                bb[1] = 0
-            if bb[2] > H:
-                bb[0] = bb[0] - bb[2] + H
-                bb[2] = H
-            if bb[2] > W:
-                bb[0] = bb[0] - bb[2] + W
-                bb[2] = W
+        bbox = rois[:, [1, 0, 3, 2]]
+        bbox[:, :2] = bbox[:, :2] + 1
+        bbox[:, 2:] = bbox[:, 2:] - 1
         return bbox
 
     def _get_bbox_label(self, i):
