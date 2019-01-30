@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+import warnings
 
 import chainer
 import torch
@@ -8,7 +9,6 @@ from chainer_dense_fusion.links.model import PoseNet
 
 
 def copy_layer(layer, params, param_name, param_type):
-    print('param_name: {} copied'.format(param_name))
     param = np.asarray(params[param_name])
     if param_type == 'weight':
         assert layer.W.array.shape == param.shape
@@ -19,6 +19,7 @@ def copy_layer(layer, params, param_name, param_type):
     else:
         raise ValueError(
             'param_name: {} is not supported'.format(param_name))
+    # print('param_name: {} copied'.format(param_name))
 
 
 def torch2chainer(model, params):
@@ -26,7 +27,6 @@ def torch2chainer(model, params):
     emb_dict = {'e_conv': 'img', 'conv': 'pcd'}
     param_names = list(params.keys())
     uncopied_param_names = param_names.copy()
-    print('start copying params')
     for param_name in param_names:
         # pose net conv
         if param_name.startswith('conv'):
@@ -95,7 +95,7 @@ def torch2chainer(model, params):
         # pspnet resnet conv1
         elif param_name.startswith('cnn.model.module.feats.conv1'):
             param_type = param_name.split('.')[-1]
-            layer = model.pspnet_extractor.extractor.conv1
+            layer = model.resnet_extractor.conv1
             copy_layer(layer, params, param_name, param_type)
             uncopied_param_names.remove(param_name)
         # pspnet resnet2-5
@@ -112,7 +112,7 @@ def torch2chainer(model, params):
                     'param: {} is not supported'.format(param_name))
             resblock_num = int(param_resblock_name[-1]) + 1
             resblock = getattr(
-                model.pspnet_extractor.extractor, 'res{}'.format(resblock_num))
+                model.resnet_extractor, 'res{}'.format(resblock_num))
             block_num = int(block_num)
             if block_num == 0:
                 block_name = 'a'
@@ -123,9 +123,8 @@ def torch2chainer(model, params):
             copy_layer(layer, params, param_name, param_type)
             uncopied_param_names.remove(param_name)
 
-    print('')
     if len(uncopied_param_names) > 0:
-        print('Some params are not copied:')
+        warnings.warn('Some params are not copied:')
         for param_name in uncopied_param_names:
             print('param_name: {} not copied'.format(param_name))
     else:
@@ -140,13 +139,19 @@ def main():
 
     chainer_model = PoseNet(
         n_fg_class=21, n_point=1000)
+    print('start loading params')
     torch_params = torch.load(args.pthfile)
+    print('finish loading params')
+    print('start copying params')
     torch2chainer(chainer_model, torch_params)
+    print('finish copying params')
     if args.out is None:
         outpath = 'posenet_ycb_converted.npz'
     else:
         outpath = args.out
+    print('start saving npz')
     chainer.serializers.save_npz(outpath, chainer_model)
+    print('finish saving npz')
 
 
 if __name__ == '__main__':
