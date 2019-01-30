@@ -33,9 +33,9 @@ def main():
         model.to_gpu()
 
     for i in ids:
-        img, depth, lbl_img, _, _, intrinsic = dataset[i]
+        img, depth, lbl_img, bbox, bbox_label, _, _, intrinsic = dataset[i]
         poses, labels, _ = model.predict(
-            [img], [depth], [lbl_img], [intrinsic])
+            [img], [depth], [lbl_img], [bbox], [bbox_label], [intrinsic])
         pose = poses[0]
         label = labels[0]
 

@@ -4,8 +4,6 @@ import chainer.functions as F
 import chainer.links as L
 import numpy as np
 
-from chainercv.utils.mask.mask_to_bbox import mask_to_bbox
-
 from chainer_dense_fusion.links.model.pspnet import PSPNetExtractor
 from chainer_dense_fusion.links.model.resnet import ResNet18Extractor
 
@@ -99,7 +97,7 @@ class PoseNet(chainer.Chain):
         img = ((img - self.mean) / self.std).astype(np.float32, copy=False)
         return img
 
-    def predict(self, imgs, depths, lbl_imgs, bboxes, labels, intrinsics):
+    def predict(self, imgs, depths, lbl_imgs, bboxes, bbox_labels, intrinsics):
         prepared_imgs = []
         for img in imgs:
             img = self.prepare(img.astype(np.float32))
@@ -108,8 +106,8 @@ class PoseNet(chainer.Chain):
         poses = []
         labels = []
         scores = []
-        for img, depth, lbl_img, intrinsic in zip(
-                imgs, depths, lbl_imgs, intrinsics):
+        for img, depth, lbl_img, bbox, bbox_label, intrinsic in zip(
+                imgs, depths, lbl_imgs, bboxes, bbox_labels, intrinsics):
             # generete organized pcd
             H, W = img.shape[1:]
             fx, fy, cx, cy = intrinsic
@@ -127,11 +125,10 @@ class PoseNet(chainer.Chain):
             label = []
             pose = []
             score = []
-            for lbl in np.unique(lbl_img):
+            for bb, lbl in zip(bbox, bbox_label):
                 if lbl < 0:
                     continue
-                bb = mask_to_bbox((lbl_img == lbl)[None])[0]
-                bb = bb.astype(np.int32)
+                bb = np.round(bb).astype(np.int32)
                 ymin, xmin, ymax, xmax = bb
                 masked_img = img[:, ymin:ymax, xmin:xmax]
                 msk = np.logical_and(lbl_img == lbl, depth != 0)
