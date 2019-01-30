@@ -70,6 +70,7 @@ class YCBVideoDataset(GetterDataset):
         pose[:, 3, 3] = 1
         pose[:, :3, :3] = rt[:, :, :3]
         pose[:, :3, 3] = rt[:, :, 3]
+        pose = pose.transpose((0, 2, 1))
         return pose
 
     def _get_depth_scale(self, i):
@@ -128,7 +129,7 @@ class YCBVideoDataset(GetterDataset):
         # model pcd
         for lbl, pse in zip(label, pose):
             obj_pcd = self._get_object_pcd(lbl)
-            obj_pcd.transform(pse)
+            obj_pcd.transform(pse.transpose((1, 0)))
             obj_pcd.transform(
                 [[1, 0, 0, 0],
                  [0, -1, 0, 0],
