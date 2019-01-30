@@ -14,6 +14,8 @@ from open3d import create_rgbd_image_from_color_and_depth
 from open3d import PinholeCameraIntrinsic
 import scipy.io
 
+from chainer_dense_fusion.visualizations import vis_6d_pose_estimation
+
 
 ycb_root = 'pfnet/chainer-dense-fusion/ycb'
 tool_root = 'pfnet/chainer-dense-fusion/YCB_Video_toolbox'
@@ -88,17 +90,11 @@ class YCBVideoDataset(GetterDataset):
         cy = intrinsic_matrix[1][2]
         return fx, fy, cx, cy
 
-    def get_object_pcd(self, lbl, pse):
+    def get_object_pcd(self, lbl):
         xyzpath = osp.join(
             self.data_dir,
             './models/{}/points.xyz'.format(self.label_names[lbl]))
         obj_pcd = open3d.read_point_cloud(xyzpath)
-        obj_pcd.transform(pse.transpose((1, 0)))
-        obj_pcd.transform(
-            [[1, 0, 0, 0],
-             [0, -1, 0, 0],
-             [0, 0, -1, 0],
-             [0, 0, 0, 1]])
         return obj_pcd
 
     def get_camera_pcd(self, i):
@@ -112,11 +108,6 @@ class YCBVideoDataset(GetterDataset):
         rgbd = create_rgbd_image_from_color_and_depth(
             img, depth, depth_scale=1.0, convert_rgb_to_intensity=False)
         pcd = create_point_cloud_from_rgbd_image(rgbd, intrinsic)
-        pcd.transform(
-            [[1, 0, 0, 0],
-             [0, -1, 0, 0],
-             [0, 0, -1, 0],
-             [0, 0, 0, 1]])
         return pcd
 
     def visualize(self, i):
@@ -130,16 +121,15 @@ class YCBVideoDataset(GetterDataset):
     def visualize_3d(self, i):
         label = self._get_label(i)
         pose = self._get_pose(i)
-        pcds = []
-        # camera pcd
-        pcd = self.get_camera_pcd(i)
-        pcds.append(pcd)
 
+        # camera pcd
+        camera_pcd = self.get_camera_pcd(i)
         # model pcd
-        for lbl, pse in zip(label, pose):
-            obj_pcd = self.get_object_pcd(lbl, pse)
-            pcds.append(obj_pcd)
-        open3d.draw_geometries(pcds)
+        object_pcds = []
+        for lbl in label:
+            object_pcds.append(self.get_object_pcd(lbl))
+        vis_6d_pose_estimation(
+            camera_pcd, object_pcds, pose)
 
 
 class YCBVideoDatasetPoseCNNSegmented(YCBVideoDataset):

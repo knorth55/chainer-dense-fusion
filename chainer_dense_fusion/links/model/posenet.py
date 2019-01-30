@@ -103,7 +103,7 @@ class PoseNet(chainer.Chain):
             img = self.prepare(img.astype(np.float32))
             prepared_imgs.append(img)
 
-        transforms = []
+        poses = []
         labels = []
         scores = []
         for img, depth, lbl_img, intrinsic in zip(
@@ -123,7 +123,7 @@ class PoseNet(chainer.Chain):
                 (pcd_x[None], pcd_y[None], depth[None]), axis=0)
 
             label = []
-            transform = []
+            pose = []
             score = []
             for lbl in np.unique(lbl_img):
                 if lbl < 0:
@@ -164,24 +164,28 @@ class PoseNet(chainer.Chain):
                 trans = trans + pcd.transpose((1, 0))
                 # (B, C, N) -> (N, )
                 conf = cls_conf[0, lbl]
+
+                # get max conf value
                 maxid = self.xp.argmax(conf)
-                max_conf = conf[maxid]
+                max_conf = cuda.to_cpu(conf[maxid])
                 max_rot = cuda.to_cpu(rot[maxid])
                 max_trans = cuda.to_cpu(trans[maxid])
-                rot_matrix = quaternion_to_rotation_matrix(max_rot)
-                rot_matrix[3, :3] = max_trans
 
+                # quaternion -> rotation matrix
+                pse = quaternion_to_rotation_matrix(max_rot)
+                pse[3, :3] = max_trans
+
+                pose.append(pse[None])
                 label.append(label)
-                transform.append(rot_matrix)
                 score.append(max_conf)
 
-            transform = np.concatenate(transform, axis=0)
-            label = np.concatenate(label, axis=0)
-            score = np.concatenate(score, axis=0)
-            transforms.append(transform)
+            pose = np.concatenate(pose, axis=0)
+            label = np.array(label)
+            score = np.array(score)
+            poses.append(pose)
             labels.append(label)
             scores.append(score)
-        return transforms, labels, scores
+        return poses, labels, scores
 
 
 class PoseNetExtractor(chainer.Chain):

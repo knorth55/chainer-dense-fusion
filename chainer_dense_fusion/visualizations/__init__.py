@@ -1,0 +1,1 @@
+from chainer_dense_fusion.visualizations.vis_6d_pose_estimation import vis_6d_pose_estimation  # NOQA
