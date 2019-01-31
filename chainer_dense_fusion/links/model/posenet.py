@@ -152,6 +152,8 @@ class PoseNet(chainer.Chain):
                 bb[:2] = bb[:2].astype(np.int32) + 1
                 bb[2:] = bb[2:].astype(np.int32) - 1
                 bb = bb.astype(np.int32)
+                if bb[2] - bb[0] < 40 or bb[3] - bb[1] < 40:
+                    continue
                 bb_h = ((bb[2] - bb[0]) // 40 + 1) * 40
                 bb_w = ((bb[3] - bb[1]) // 40 + 1) * 40
                 bb_yc = ((bb[2] + bb[0]) / 2).astype(np.int32)
