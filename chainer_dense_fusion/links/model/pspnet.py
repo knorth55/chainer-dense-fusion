@@ -53,12 +53,13 @@ class PSPModule(chainer.Chain):
         ksizes = list(zip(kh, kw))
 
         # extract
-        hs = [x]
+        hs = []
         for i, ksize in enumerate(ksizes):
             h = F.average_pooling_2d(x, ksize, ksize)
             h = getattr(self, 'conv{}'.format(i+1))(h)
             h = F.resize_images(h, (H, W))
             hs.append(h)
+        hs.append(x)
         h = F.relu(self.bottleneck(F.concat(hs, axis=1)))
         return h
 
@@ -68,7 +69,7 @@ class PSPUpsample(chainer.Chain):
     def __init__(self, in_channels, out_channels):
         super(PSPUpsample, self).__init__()
         with self.init_scope():
-            self.conv = L.Convolution2D(in_channels, out_channels, 3, 1)
+            self.conv = L.Convolution2D(in_channels, out_channels, 3, 1, pad=1)
             self.prelu = L.PReLU()
 
     def __call__(self, x):

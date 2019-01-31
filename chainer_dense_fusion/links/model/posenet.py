@@ -60,7 +60,7 @@ class PoseNet(chainer.Chain):
 
     def __call__(self, img, pcd, pcd_indice):
         assert img.shape[0] == 1
-        pcd_indice = pcd_indice.array
+        pcd_indice = pcd_indice.array[0]
 
         # resnet extractor
         h_img = self.resnet_extractor(img)
@@ -69,13 +69,15 @@ class PoseNet(chainer.Chain):
         # posenet extractor
         B, C = h_img.shape[:2]
         h_img = h_img.reshape((B, C, -1))
-        h_img = h_img[:, :, pcd_indice].reshape((B, C, self.n_point))
+        h_img = h_img[:, :, pcd_indice]
 
         h = self.posenet_extractor(h_img, pcd)
+
         # conv1
         h_rot = F.relu(self.conv1_rot(h))
         h_trans = F.relu(self.conv1_trans(h))
         h_conf = F.relu(self.conv1_conf(h))
+
         # conv2
         h_rot = F.relu(self.conv2_rot(h_rot))
         h_trans = F.relu(self.conv2_trans(h_trans))
