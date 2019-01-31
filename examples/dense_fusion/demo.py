@@ -1,7 +1,6 @@
 import argparse
 import random
 
-import chainer
 from chainer.backends import cuda
 
 from chainer_dense_fusion.datasets.ycb import YCBVideoDatasetPoseCNNSegmented
