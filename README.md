@@ -42,3 +42,15 @@ Inference
 cd examples/dense_fusion/
 python demo.py --random
 ```
+
+TODO
+----
+- YCB Video Dataset
+  - [x] Add estimator inference script.
+  - [ ] Add refiner inference script.
+  - [ ] Add training script.
+  - [ ] Reproduce original accuracy.
+
+LICENSE
+-------
+[MIT LICENSE](LICENSE)
