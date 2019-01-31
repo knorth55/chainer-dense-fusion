@@ -2,6 +2,7 @@ import chainer
 from chainer.backends import cuda
 import chainer.functions as F
 import chainer.links as L
+from chainercv import utils
 import numpy as np
 
 from chainer_dense_fusion.links.model.pspnet import PSPNetExtractor
@@ -25,17 +26,35 @@ def quaternion_to_rotation_matrix(quat):
 
 
 class PoseNet(chainer.Chain):
+    _models = {
+        'ycb_converted': {
+            'param': {'n_fg_class': 21},
+            'url': 'https://github.com/knorth55/'
+            'chainer-dense-fusion/releases/download/v0.0.0/'
+            'posenet_ycb_converted_2019_02_01.npz',
+            'cv2': True
+        },
+    }
 
     def __init__(
-            self, n_fg_class=21, n_point=1000,
+            self, pretrained_model=None,
+            n_fg_class=21, n_point=1000,
             mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
     ):
         super(PoseNet, self).__init__()
+        param, path = utils.prepare_pretrained_model(
+            {'n_fg_class': n_fg_class}, pretrained_model, self._models)
+
+        self.n_fg_class = param['n_fg_class']
+        self.n_point = n_point
+        self.mean = np.array(mean, dtype=np.float32)[:, None, None]
+        self.std = np.array(std, dtype=np.float32)[:, None, None]
+
         with self.init_scope():
             # extractor
             self.resnet_extractor = ResNet18Extractor()
             self.pspnet_extractor = PSPNetExtractor()
-            self.posenet_extractor = PoseNetExtractor(n_point)
+            self.posenet_extractor = PoseNetExtractor(self.n_point)
             # conv1
             self.conv1_rot = L.Convolution1D(1408, 640, 1)
             self.conv1_trans = L.Convolution1D(1408, 640, 1)
@@ -49,14 +68,11 @@ class PoseNet(chainer.Chain):
             self.conv3_trans = L.Convolution1D(256, 128, 1)
             self.conv3_conf = L.Convolution1D(256, 128, 1)
             # conv4
-            self.conv4_rot = L.Convolution1D(128, n_fg_class * 4, 1)
-            self.conv4_trans = L.Convolution1D(128, n_fg_class * 3, 1)
-            self.conv4_conf = L.Convolution1D(128, n_fg_class, 1)
+            self.conv4_rot = L.Convolution1D(128, self.n_fg_class * 4, 1)
+            self.conv4_trans = L.Convolution1D(128, self.n_fg_class * 3, 1)
+            self.conv4_conf = L.Convolution1D(128, self.n_fg_class, 1)
 
-        self.n_fg_class = n_fg_class
-        self.n_point = n_point
-        self.mean = np.array(mean, dtype=np.float32)[:, None, None]
-        self.std = np.array(std, dtype=np.float32)[:, None, None]
+        chainer.serializers.load_npz(path, self)
 
     def __call__(self, img, pcd, pcd_indice):
         assert img.shape[0] == 1

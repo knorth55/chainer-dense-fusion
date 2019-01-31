@@ -23,11 +23,13 @@ def main():
         random.shuffle(ids)
 
     # model
+    if args.pretrained_model is None:
+        args.pretrained_model = 'ycb_converted'
     model = PoseNet(
+        pretrained_model=args.pretrained_model,
         n_fg_class=len(dataset.label_names),
-        n_point=1000
-    )
-    chainer.serializers.load_npz(args.pretrained_model, model)
+        n_point=1000)
+
     if args.gpu >= 0:
         cuda.get_device_from_id(args.gpu).use()
         model.to_gpu()
