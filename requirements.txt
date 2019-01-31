@@ -1,4 +1,6 @@
 chainer
 chainercv
+cython
 numpy
 open3d-python
+scipy
