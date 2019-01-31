@@ -163,8 +163,6 @@ class YCBVideoDatasetPoseCNNSegmented(YCBVideoDataset):
         _, H, W = img.shape
         rois = np.array(data['rois'][:, 2:6], dtype=np.float32)
         bbox = rois[:, [1, 0, 3, 2]]
-        bbox[:, :2] = bbox[:, :2] + 1
-        bbox[:, 2:] = bbox[:, 2:] - 1
         return bbox
 
     def _get_bbox_label(self, i):

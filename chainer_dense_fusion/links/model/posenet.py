@@ -107,7 +107,8 @@ class PoseNet(chainer.Chain):
         labels = []
         scores = []
         for img, depth, lbl_img, bbox, bbox_label, intrinsic in zip(
-                imgs, depths, lbl_imgs, bboxes, bbox_labels, intrinsics):
+                prepared_imgs, depths, lbl_imgs,
+                bboxes, bbox_labels, intrinsics):
             # generete organized pcd
             H, W = img.shape[1:]
             fx, fy, cx, cy = intrinsic
@@ -129,9 +130,11 @@ class PoseNet(chainer.Chain):
                 if lbl < 0:
                     continue
 
-                # format bbox size
-                bb_h = (bb[2] - bb[0] // 40 + 1) * 40
-                bb_w = (bb[3] - bb[1] // 40 + 1) * 40
+                bb[:2] = bb[:2].astype(np.int32) + 1
+                bb[2:] = bb[2:].astype(np.int32) - 1
+                bb = bb.astype(np.int32)
+                bb_h = ((bb[2] - bb[0]) // 40 + 1) * 40
+                bb_w = ((bb[3] - bb[1]) // 40 + 1) * 40
                 bb_yc = ((bb[2] + bb[0]) / 2).astype(np.int32)
                 bb_xc = ((bb[3] + bb[1]) / 2).astype(np.int32)
                 ymin = bb_yc - (bb_h / 2).astype(np.int32)
@@ -150,7 +153,6 @@ class PoseNet(chainer.Chain):
                 if xmax > W:
                     xmin = xmin - xmax + W
                     xmax = W
-
                 masked_img = img[:, ymin:ymax, xmin:xmax]
                 msk = np.logical_and(lbl_img == lbl, depth != 0)
                 pcd_indice = np.where(msk[ymin:ymax, xmin:xmax].flatten())[0]
