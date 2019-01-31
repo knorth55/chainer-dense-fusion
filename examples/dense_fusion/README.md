@@ -5,7 +5,7 @@
 ## Note
 
 You need to download data below manually.
-- Download [YCB Video Dataset](https://rse-lab.cs.washington.edu/projects/posecnn/) in `~/.chainer/dataset/pfnet/chainer-dense-fusion/ycb`.
+- Download [YCB Video Dataset](https://drive.google.com/uc?id=1if4VoEXNx9W3XCn0Y7Fp15B4GpcYbyYi) in `~/.chainer/dataset/pfnet/chainer-dense-fusion/ycb`.
 - Download [PoseCNN results](https://github.com/yuxng/YCB_Video_toolbox/raw/master/results_PoseCNN_RSS2018.zip) in `~/.chainer/dataset/pfnet/chainer-dense-fusion/YCB_Video_toolbox`
 
 ## Inference
