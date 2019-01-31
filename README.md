@@ -3,7 +3,7 @@ chainer-dense-fusion
 
 ![Build Status](https://travis-ci.com/knorth55/chainer-dense-fusion.svg?branch=master)
 
-<img src="static/example.png" width="75%" />
+<img src="_static/example.png" width="75%" />
 
 This is [Chainer](https://github.com/chainer/chainer) implementation of [DenseFusion: 6D Object Pose Estimation by Iterative Dense Fusion](https://arxiv.org/abs/1901.04780).
 
