@@ -39,6 +39,6 @@ Inference
 ---------
 
 ```bash
-cd examples/
+cd examples/dense_fusion/
 python demo.py --random
 ```
