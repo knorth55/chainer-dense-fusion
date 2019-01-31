@@ -18,7 +18,7 @@ class ResNet18Extractor(chainer.Chain):
         # 1 -> 1/2
         h = F.relu(self.conv1(x))
         # 1/2 -> 1/4
-        h = F.max_pooling_2d(h, ksize=3, stride=2)
+        h = F.max_pooling_2d(h, ksize=3, stride=2, pad=1, cover_all=False)
         # 1/4 -> 1/8
         h = self.res2(h)
         h = self.res3(h)

@@ -87,7 +87,8 @@ class PoseNet(chainer.Chain):
         # conv4
         cls_rot = self.conv4_rot(h_rot)
         cls_trans = self.conv4_trans(h_trans)
-        cls_conf = self.conv4_conf(h_conf)
+        cls_conf = F.sigmoid(self.conv4_conf(h_conf))
+
         cls_rot = cls_rot.reshape((B, self.n_fg_class, 4, self.n_point))
         cls_trans = cls_trans.reshape((B, self.n_fg_class, 3, self.n_point))
         cls_conf = cls_conf.reshape((B, self.n_fg_class, self.n_point))
