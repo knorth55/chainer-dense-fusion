@@ -1,7 +1,5 @@
 # 6D Pose Estimation with YCB Video Dataset 
 
-![Example](../../_static/example.png)
-
 ## Note
 
 You need to download data below manually.
@@ -21,14 +19,18 @@ This model is converted from a model trained with original repository.
 ```bash
 python demo.py --gpu <gpu> --random
 ```
+![Example](../../_static/example.png)
 
-### Command for PoseNet
+
+### Command for PoseNet (No iterative refiner)
 
 You can try Dense Fusion with no iterative refiner with command below.
 
 ```bash
 python demo.py --gpu <gpu> --random --no-refiner
 ```
+![Example](../../_static/example_no_refine.png)
+
 
 ## Model conversion
 
