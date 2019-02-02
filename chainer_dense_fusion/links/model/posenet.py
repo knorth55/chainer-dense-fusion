@@ -9,6 +9,22 @@ from chainer_dense_fusion.links.model.pspnet import PSPNetExtractor
 from chainer_dense_fusion.links.model.resnet import ResNet18Extractor
 
 
+def generate_organized_pcd(img, depth, intrinsic):
+    H, W = img.shape[1:]
+    fx, fy, cx, cy = intrinsic
+    xmap = np.array(
+        [[j for i in range(W)] for j in range(H)],
+        dtype=np.float32)
+    ymap = np.array(
+        [[i for i in range(W)] for j in range(H)],
+        dtype=np.float32)
+    pcd_x = (ymap - cx) * depth / fx
+    pcd_y = (xmap - cy) * depth / fy
+    organized_pcd = np.concatenate(
+        (pcd_x[None], pcd_y[None], depth[None]), axis=0)
+    return organized_pcd
+
+
 def quaternion_to_rotation_matrix(quat):
     q = quat.copy()
     n = np.dot(q, q)
@@ -44,7 +60,6 @@ class PoseNet(chainer.Chain):
         super(PoseNet, self).__init__()
         param, path = utils.prepare_pretrained_model(
             {'n_fg_class': n_fg_class}, pretrained_model, self._models)
-
         self.n_fg_class = param['n_fg_class']
         self.n_point = n_point
         self.mean = np.array(mean, dtype=np.float32)[:, None, None]
@@ -72,7 +87,8 @@ class PoseNet(chainer.Chain):
             self.conv4_trans = L.Convolution1D(128, self.n_fg_class * 3, 1)
             self.conv4_conf = L.Convolution1D(128, self.n_fg_class, 1)
 
-        chainer.serializers.load_npz(path, self)
+        if pretrained_model is not None:
+            chainer.serializers.load_npz(path, self)
 
     def __call__(self, img, pcd, pcd_indice):
         assert img.shape[0] == 1
@@ -116,6 +132,86 @@ class PoseNet(chainer.Chain):
         img = ((img - self.mean) / self.std).astype(np.float32, copy=False)
         return img
 
+    def _predict_each(self, img, organized_pcd, msk, bb, bb_lbl):
+        H, W = img.shape[1:]
+
+        if bb[2] - bb[0] < 40 or bb[3] - bb[1] < 40:
+            return None, None
+        bb[:2] = bb[:2].astype(np.int32) + 1
+        bb[2:] = bb[2:].astype(np.int32) - 1
+        bb = bb.astype(np.int32)
+        bb_h = ((bb[2] - bb[0]) // 40 + 1) * 40
+        bb_w = ((bb[3] - bb[1]) // 40 + 1) * 40
+        bb_yc = ((bb[2] + bb[0]) / 2).astype(np.int32)
+        bb_xc = ((bb[3] + bb[1]) / 2).astype(np.int32)
+        ymin = bb_yc - (bb_h / 2).astype(np.int32)
+        ymax = bb_yc + (bb_h / 2).astype(np.int32)
+        xmin = bb_xc - (bb_w / 2).astype(np.int32)
+        xmax = bb_xc + (bb_w / 2).astype(np.int32)
+        if ymin < 0:
+            ymax = ymax - ymin
+            ymin = 0
+        if ymax > H:
+            ymin = ymin - ymax + H
+            ymax = H
+        if xmin < 0:
+            xmax = xmax - xmin
+            xmin = 0
+        if xmax > W:
+            xmin = xmin - xmax + W
+            xmax = W
+        masked_img = img[:, ymin:ymax, xmin:xmax]
+        pcd_indice = np.where(msk[ymin:ymax, xmin:xmax].flatten())[0]
+
+        if len(pcd_indice) == 0:
+            return None, None
+        if len(pcd_indice) > self.n_point:
+            pcd_indice_msk = np.zeros(len(pcd_indice), dtype=bool)
+            pcd_indice_msk[:self.n_point] = True
+            pcd_indice = pcd_indice[
+                np.random.permutation(pcd_indice_msk)]
+        else:
+            pcd_indice = np.pad(
+                pcd_indice,
+                (0, self.n_point - len(pcd_indice)), 'wrap')
+        pcd = organized_pcd[:, ymin:ymax, xmin:xmax].reshape((3, -1))
+        masked_pcd = pcd[:, pcd_indice]
+
+        with chainer.using_config('train', False), \
+                chainer.function.no_backprop_mode():
+            masked_img_var = chainer.Variable(
+                self.xp.array(masked_img[None]))
+            masked_pcd_var = chainer.Variable(
+                self.xp.array(masked_pcd[None]))
+            pcd_indice_var = chainer.Variable(
+                    self.xp.array(pcd_indice[None]))
+            cls_rot, cls_trans, cls_conf = \
+                self.__call__(
+                    masked_img_var, masked_pcd_var, pcd_indice_var)
+
+        # variable -> cpu array
+        rot = cuda.to_cpu(cls_rot.array)[0, bb_lbl]
+        trans = cuda.to_cpu(cls_trans.array)[0, bb_lbl]
+        conf = cuda.to_cpu(cls_conf.array)[0, bb_lbl]
+
+        # (B, C, 4, N) -> (N, 4)
+        rot = rot.transpose((1, 0))
+        rot = rot / np.linalg.norm(rot, axis=1)[:, None]
+        # (B, C, 3, N) -> (N, 3)
+        trans = trans.transpose((1, 0))
+        trans = trans + masked_pcd.transpose((1, 0))
+
+        # get max conf value
+        maxid = np.argmax(conf)
+        max_conf = conf[maxid]
+        max_rot = rot[maxid]
+        max_trans = trans[maxid]
+
+        # quaternion -> rotation matrix
+        max_pse = quaternion_to_rotation_matrix(max_rot)
+        max_pse[3, :3] = max_trans
+        return max_pse, max_conf
+
     def predict(self, imgs, depths, lbl_imgs, bboxes, bbox_labels, intrinsics):
         prepared_imgs = []
         for img in imgs:
@@ -129,105 +225,23 @@ class PoseNet(chainer.Chain):
                 prepared_imgs, depths, lbl_imgs,
                 bboxes, bbox_labels, intrinsics):
             # generete organized pcd
-            H, W = img.shape[1:]
-            fx, fy, cx, cy = intrinsic
-            xmap = np.array(
-                [[j for i in range(W)] for j in range(H)],
-                dtype=np.float32)
-            ymap = np.array(
-                [[i for i in range(W)] for j in range(H)],
-                dtype=np.float32)
-            pcd_x = (ymap - cx) * depth / fx
-            pcd_y = (xmap - cy) * depth / fy
-            organized_pcd = np.concatenate(
-                (pcd_x[None], pcd_y[None], depth[None]), axis=0)
+            organized_pcd = generate_organized_pcd(img, depth, intrinsic)
 
             label = []
             pose = []
             score = []
-            for bb, lbl in zip(bbox, bbox_label):
-                if lbl < 0:
+            for bb, bb_lbl in zip(bbox, bbox_label):
+                if bb_lbl < 0:
                     continue
-
-                bb[:2] = bb[:2].astype(np.int32) + 1
-                bb[2:] = bb[2:].astype(np.int32) - 1
-                bb = bb.astype(np.int32)
-                if bb[2] - bb[0] < 40 or bb[3] - bb[1] < 40:
+                msk = np.logical_and(lbl_img == bb_lbl, depth != 0)
+                pse, conf = self._predict_each(
+                    img, organized_pcd, msk, bb, bb_lbl)
+                if pse is None or conf is None:
                     continue
-                bb_h = ((bb[2] - bb[0]) // 40 + 1) * 40
-                bb_w = ((bb[3] - bb[1]) // 40 + 1) * 40
-                bb_yc = ((bb[2] + bb[0]) / 2).astype(np.int32)
-                bb_xc = ((bb[3] + bb[1]) / 2).astype(np.int32)
-                ymin = bb_yc - (bb_h / 2).astype(np.int32)
-                ymax = bb_yc + (bb_h / 2).astype(np.int32)
-                xmin = bb_xc - (bb_w / 2).astype(np.int32)
-                xmax = bb_xc + (bb_w / 2).astype(np.int32)
-                if ymin < 0:
-                    ymax = ymax - ymin
-                    ymin = 0
-                if ymax > H:
-                    ymin = ymin - ymax + H
-                    ymax = H
-                if xmin < 0:
-                    xmax = xmax - xmin
-                    xmin = 0
-                if xmax > W:
-                    xmin = xmin - xmax + W
-                    xmax = W
-                masked_img = img[:, ymin:ymax, xmin:xmax]
-                msk = np.logical_and(lbl_img == lbl, depth != 0)
-                pcd_indice = np.where(msk[ymin:ymax, xmin:xmax].flatten())[0]
-                if len(pcd_indice) == 0:
-                    continue
-                if len(pcd_indice) > self.n_point:
-                    pcd_indice_msk = np.zeros(len(pcd_indice), dtype=bool)
-                    pcd_indice_msk[:self.n_point] = True
-                    pcd_indice = pcd_indice[
-                        np.random.permutation(pcd_indice_msk)]
-                else:
-                    pcd_indice = np.pad(
-                        pcd_indice,
-                        (0, self.n_point - len(pcd_indice)), 'wrap')
-                pcd = organized_pcd[:, ymin:ymax, xmin:xmax].reshape((3, -1))
-                masked_pcd = pcd[:, pcd_indice]
-
-                with chainer.using_config('train', False), \
-                        chainer.function.no_backprop_mode():
-                    masked_img_var = chainer.Variable(
-                        self.xp.array(masked_img[None]))
-                    masked_pcd_var = chainer.Variable(
-                        self.xp.array(masked_pcd[None]))
-                    pcd_indice_var = chainer.Variable(
-                            self.xp.array(pcd_indice[None]))
-                    cls_rot, cls_trans, cls_conf = \
-                        self.__call__(
-                            masked_img_var, masked_pcd_var, pcd_indice_var)
-
-                # variable -> cpu array
-                rot = cuda.to_cpu(cls_rot.array)[0, lbl]
-                trans = cuda.to_cpu(cls_trans.array)[0, lbl]
-                conf = cuda.to_cpu(cls_conf.array)[0, lbl]
-
-                # (B, C, 4, N) -> (N, 4)
-                rot = rot.transpose((1, 0))
-                rot = rot / np.linalg.norm(rot, axis=1)[:, None]
-                # (B, C, 3, N) -> (N, 3)
-                trans = trans.transpose((1, 0))
-                trans = trans + masked_pcd.transpose((1, 0))
-
-                # get max conf value
-                maxid = np.argmax(conf)
-                max_conf = conf[maxid]
-                max_rot = rot[maxid]
-                max_trans = trans[maxid]
-
-                # quaternion -> rotation matrix
-                pse = quaternion_to_rotation_matrix(max_rot)
-                pse[3, :3] = max_trans
 
                 pose.append(pse[None])
-                label.append(lbl)
-                score.append(max_conf)
+                label.append(bb_lbl)
+                score.append(conf)
 
             pose = np.concatenate(pose, axis=0)
             label = np.array(label)
