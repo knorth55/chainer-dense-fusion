@@ -124,7 +124,7 @@ class PoseRefineNet(chainer.Chain):
             self.conv2_rot = L.Linear(512, 128)
             self.conv2_trans = L.Linear(512, 128)
             self.conv3_rot = L.Linear(128, self.n_fg_class * 4)
-            self.conv3_trans = L.Linear(512, self.n_fg_class * 3)
+            self.conv3_trans = L.Linear(128, self.n_fg_class * 3)
 
     def __call__(self, h_img, pcd):
         B = pcd.shape[0]
