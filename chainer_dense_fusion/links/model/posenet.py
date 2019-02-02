@@ -244,11 +244,11 @@ class PoseNetExtractor(chainer.Chain):
         super(PoseNetExtractor, self).__init__()
         with self.init_scope():
             # conv1
-            self.conv1_pcd = L.Convolution1D(3, 64, 1)
             self.conv1_img = L.Convolution1D(32, 64, 1)
+            self.conv1_pcd = L.Convolution1D(3, 64, 1)
             # conv2
-            self.conv2_pcd = L.Convolution1D(64, 128, 1)
             self.conv2_img = L.Convolution1D(64, 128, 1)
+            self.conv2_pcd = L.Convolution1D(64, 128, 1)
             # conv3, conv4
             self.conv3 = L.Convolution1D(256, 512, 1)
             self.conv4 = L.Convolution1D(512, 1024, 1)
@@ -256,6 +256,7 @@ class PoseNetExtractor(chainer.Chain):
         self.n_point = n_point
 
     def __call__(self, h_img, pcd):
+        B = h_img.shape[0]
         # conv1
         h_pcd = F.relu(self.conv1_pcd(pcd))
         h_img = F.relu(self.conv1_img(h_img))
@@ -268,7 +269,6 @@ class PoseNetExtractor(chainer.Chain):
         h = F.relu(self.conv3(feat2))
         h = F.relu(self.conv4(h))
         h = F.average_pooling_1d(h, self.n_point)
-        B = h.shape[0]
         h = h.reshape((B, 1024, 1))
         feat3 = F.repeat(h, self.n_point, axis=2)
         feat = F.concat((feat1, feat2, feat3), axis=1)
