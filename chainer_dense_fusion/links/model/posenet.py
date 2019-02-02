@@ -257,12 +257,12 @@ class PoseNetExtractor(chainer.Chain):
     def __call__(self, h_img, pcd):
         B = h_img.shape[0]
         # conv1
-        h_pcd = F.relu(self.conv1_pcd(pcd))
         h_img = F.relu(self.conv1_img(h_img))
+        h_pcd = F.relu(self.conv1_pcd(pcd))
         feat1 = F.concat((h_pcd, h_img), axis=1)
         # conv2
-        h_pcd = F.relu(self.conv2_pcd(h_pcd))
         h_img = F.relu(self.conv2_img(h_img))
+        h_pcd = F.relu(self.conv2_pcd(h_pcd))
         feat2 = F.concat((h_pcd, h_img), axis=1)
         # conv3, conv4
         h = F.relu(self.conv3(feat2))
