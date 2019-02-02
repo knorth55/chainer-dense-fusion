@@ -11,10 +11,10 @@ from chainer_dense_fusion.links.model import PoseNet
 def copy_layer(layer, params, param_name, param_type):
     param = np.asarray(params[param_name])
     if param_type == 'weight':
-        assert layer.W.array.shape == param.shape
+        assert layer.W.array.shape == param.shape, param_name
         layer.W.array[:] = param
     elif param_type == 'bias':
-        assert layer.b.array.shape == param.shape
+        assert layer.b.array.shape == param.shape, param_name
         layer.b.array[:] = param
     else:
         raise ValueError(
@@ -22,7 +22,7 @@ def copy_layer(layer, params, param_name, param_type):
     # print('param_name: {} copied'.format(param_name))
 
 
-def torch2chainer(model, params):
+def posenet_torch2chainer(model, params):
     rtc_dict = {'r': 'rot', 't': 'trans', 'c': 'conf'}
     emb_dict = {'e_conv': 'img', 'conv': 'pcd'}
     param_names = list(params.keys())
@@ -148,7 +148,7 @@ def main():
     torch_params = torch.load(args.pthfile)
     print('finish loading params')
     print('start copying params')
-    torch2chainer(chainer_model, torch_params)
+    posenet_torch2chainer(chainer_model, torch_params)
     print('finish copying params')
     if args.out is None:
         outpath = 'posenet_ycb_converted.npz'
