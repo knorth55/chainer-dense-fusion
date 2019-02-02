@@ -4,14 +4,16 @@ import random
 from chainer.backends import cuda
 
 from chainer_dense_fusion.datasets.ycb import YCBVideoDatasetPoseCNNSegmented
+from chainer_dense_fusion.links.model import DenseFusion
 from chainer_dense_fusion.links.model import PoseNet
 from chainer_dense_fusion.visualizations import vis_6d_pose_estimation
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--random', action='store_true')
+    parser.add_argument('--no-refiner', action='store_true')
     parser.add_argument('--pretrained-model')
+    parser.add_argument('--random', action='store_true')
     parser.add_argument('--gpu', type=int, default=0)
     args = parser.parse_args()
 
@@ -24,10 +26,16 @@ def main():
     # model
     if args.pretrained_model is None:
         args.pretrained_model = 'ycb_converted'
-    model = PoseNet(
-        pretrained_model=args.pretrained_model,
-        n_fg_class=len(dataset.label_names),
-        n_point=1000)
+    if args.no_refiner:
+        model = PoseNet(
+            pretrained_model=args.pretrained_model,
+            n_fg_class=len(dataset.label_names),
+            n_point=1000)
+    else:
+        model = DenseFusion(
+            pretrained_model=args.pretrained_model,
+            n_fg_class=len(dataset.label_names),
+            n_point=1000, n_iter=2)
 
     if args.gpu >= 0:
         cuda.get_device_from_id(args.gpu).use()

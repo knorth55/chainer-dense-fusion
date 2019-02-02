@@ -47,7 +47,7 @@ TODO
 ----
 - YCB Video Dataset
   - [x] Add estimator inference script.
-  - [ ] Add refiner inference script.
+  - [x] Add refiner inference script.
   - [ ] Add training script.
   - [ ] Reproduce original accuracy.
 
