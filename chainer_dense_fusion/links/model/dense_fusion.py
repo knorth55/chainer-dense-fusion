@@ -14,7 +14,15 @@ from chainer_dense_fusion.utils import quaternion_to_rotation_matrix
 
 class DenseFusion(chainer.Chain):
 
-    _models = {}
+    _models = {
+        'ycb_converted': {
+            'param': {'n_fg_class': 21},
+            'url': 'https://github.com/knorth55/'
+            'chainer-dense-fusion/releases/download/v0.0.1/'
+            'dense_fusion_ycb_converted_2019_02_03.npz',
+            'cv2': True
+        },
+    }
 
     def __init__(
             self, pretrained_model=None,
