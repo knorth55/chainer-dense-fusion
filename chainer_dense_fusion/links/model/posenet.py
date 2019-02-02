@@ -1,3 +1,5 @@
+from __future__ import division
+
 import chainer
 from chainer.backends import cuda
 import chainer.functions as F
