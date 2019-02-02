@@ -139,8 +139,8 @@ class PoseRefineNet(chainer.Chain):
         h_rot = F.relu(self.conv2_rot(h_rot))
         h_trans = F.relu(self.conv2_trans(h_trans))
         # conv3
-        h_rot = F.relu(self.conv3_rot(h_rot))
-        h_trans = F.relu(self.conv3_trans(h_trans))
+        h_rot = self.conv3_rot(h_rot)
+        h_trans = self.conv3_trans(h_trans)
         cls_rot = h_rot.reshape((B, self.n_fg_class, 4))
         cls_trans = h_trans.reshape((B, self.n_fg_class, 3))
         return cls_rot, cls_trans
