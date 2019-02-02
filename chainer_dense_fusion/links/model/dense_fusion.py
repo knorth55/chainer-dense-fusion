@@ -1,3 +1,5 @@
+from __future__ import division
+
 import chainer
 from chainer.backends import cuda
 import chainer.functions as F
@@ -13,6 +15,7 @@ from chainer_dense_fusion.utils import quaternion_to_rotation_matrix
 class DenseFusion(chainer.Chain):
 
     _models = {}
+
     def __init__(
             self, pretrained_model=None,
             n_fg_class=21, n_point=1000, n_iter=2,
@@ -76,15 +79,15 @@ class DenseFusion(chainer.Chain):
 
                 for _ in range(self.n_iter):
                     # refiner
-                    refine_pcd = masked_pcd.trasnpose((1, 0)) - pse[3, :3]
+                    refine_pcd = masked_pcd.transpose((1, 0)) - pse[3, :3]
                     refine_pcd = np.dot(refine_pcd, pse[:3, :3].T)
-                    refine_pcd = refine_pcd.transpose((0, 1))
+                    refine_pcd = refine_pcd.transpose((1, 0))
                     with chainer.using_config('train', False), \
                             chainer.function.no_backprop_mode():
-                        pcd_var = chainer.Variable(
-                            self.xp.array(pcd[None]))
+                        refine_pcd_var = chainer.Variable(
+                            self.xp.array(refine_pcd[None]))
                         refine_cls_rot, refine_cls_trans = \
-                            self.__call__(h_img_var, pcd_var)
+                            self.refiner.__call__(h_img_var, refine_pcd_var)
 
                     # variable -> cpu array
                     refine_rot = cuda.to_cpu(refine_cls_rot.array)[0, bb_lbl]
@@ -139,7 +142,7 @@ class PoseRefineNet(chainer.Chain):
         h_rot = F.relu(self.conv3_rot(h_rot))
         h_trans = F.relu(self.conv3_trans(h_trans))
         cls_rot = h_rot.reshape((B, self.n_fg_class, 4))
-        cls_trans = h_rot.reshape((B, self.n_fg_class, 3))
+        cls_trans = h_trans.reshape((B, self.n_fg_class, 3))
         return cls_rot, cls_trans
 
 
