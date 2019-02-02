@@ -10,22 +10,38 @@ You need to download data below manually.
 
 ## Inference
 
-### converted Model
-Converted model can be dowloaded [here](https://github.com/knorth55/chainer-dense-fusion/releases/download/v0.0.0/posenet_ycb_converted_2019_02_01.npz).
+### Converted Model
+Converted model of Dense Fusion can be dowloaded [here](https://github.com/knorth55/chainer-dense-fusion/releases/download/v0.0.1/dense_fusion_ycb_converted_2019_02_03.npz) and
+the one of PoseNet can be dowloaded [here](https://github.com/knorth55/chainer-dense-fusion/releases/download/v0.0.0/posenet_ycb_converted_2019_02_01.npz).
 
 This model is converted from a model trained with original repository.
 
-### Command
+### Command for Dense Fusion
 
 ```bash
 python demo.py --gpu <gpu> --random
+```
+
+### Command for PoseNet
+
+You can try Dense Fusion with no iterative refiner with command below.
+
+```bash
+python demo.py --gpu <gpu> --random --no-refiner
 ```
 
 ## Model conversion
 
 Convert PyTorch model to chainer model.
 
+### Dense Fusion
 
 ```bash
-python pth2npz_posenet.py <pthpath> --out <chainermodelpath>
+python pth2npz.py <posenetpath> <refinerpath> --out <chainermodelpath>
+```
+
+### PoseNet (No iterative refiner)
+
+```bash
+python pth2npz_posenet.py <posenetpath> --out <chainermodelpath>
 ```

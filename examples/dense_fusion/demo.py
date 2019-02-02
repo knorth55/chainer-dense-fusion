@@ -11,7 +11,7 @@ from chainer_dense_fusion.visualizations import vis_6d_pose_estimation
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--posenet', action='store_true')
+    parser.add_argument('--no-refiner', action='store_true')
     parser.add_argument('--pretrained-model')
     parser.add_argument('--random', action='store_true')
     parser.add_argument('--gpu', type=int, default=0)
@@ -26,7 +26,7 @@ def main():
     # model
     if args.pretrained_model is None:
         args.pretrained_model = 'ycb_converted'
-    if args.posenet:
+    if args.no_refiner:
         model = PoseNet(
             pretrained_model=args.pretrained_model,
             n_fg_class=len(dataset.label_names),
