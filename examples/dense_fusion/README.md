@@ -27,5 +27,5 @@ Convert PyTorch model to chainer model.
 
 
 ```bash
-python pth2npz.py <pthpath> --out <chainermodelpath>
+python pth2npz_posenet.py <pthpath> --out <chainermodelpath>
 ```
