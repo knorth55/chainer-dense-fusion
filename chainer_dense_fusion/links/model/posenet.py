@@ -10,7 +10,7 @@ import numpy as np
 from chainer_dense_fusion.links.model.pspnet import PSPNetExtractor
 from chainer_dense_fusion.links.model.resnet import ResNet18Extractor
 from chainer_dense_fusion.utils import generate_organized_pcd
-from chainer_dense_fusion.utils import quaternion_to_rotation_matrix
+from chainer_dense_fusion.utils import generate_pose
 
 
 class PoseNet(chainer.Chain):
@@ -196,7 +196,7 @@ class PoseNet(chainer.Chain):
                 prepared_imgs, depths, lbl_imgs,
                 bboxes, bbox_labels, intrinsics):
             # generete organized pcd
-            organized_pcd = generate_organized_pcd(img, depth, intrinsic)
+            organized_pcd = generate_organized_pcd(depth, intrinsic)
             H, W = img.shape[1:]
 
             label = []
@@ -219,10 +219,7 @@ class PoseNet(chainer.Chain):
                 masked_pcd = pcd[:, pcd_indice]
                 rot, trans, conf, _ = self.predict_each(
                     masked_img, masked_pcd, pcd_indice, bb_lbl)
-
-                # quaternion -> rotation matrix
-                pse = quaternion_to_rotation_matrix(rot)
-                pse[3, :3] = trans
+                pse = generate_pose(rot, trans)
 
                 pose.append(pse[None])
                 label.append(bb_lbl)

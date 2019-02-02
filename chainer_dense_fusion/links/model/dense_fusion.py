@@ -9,7 +9,7 @@ import numpy as np
 
 from chainer_dense_fusion.links.model.posenet import PoseNet
 from chainer_dense_fusion.utils import generate_organized_pcd
-from chainer_dense_fusion.utils import quaternion_to_rotation_matrix
+from chainer_dense_fusion.utils import generate_pose
 
 
 class DenseFusion(chainer.Chain):
@@ -58,7 +58,7 @@ class DenseFusion(chainer.Chain):
                 prepared_imgs, depths, lbl_imgs,
                 bboxes, bbox_labels, intrinsics):
             # generete organized pcd
-            organized_pcd = generate_organized_pcd(img, depth, intrinsic)
+            organized_pcd = generate_organized_pcd(depth, intrinsic)
             H, W = img.shape[1:]
 
             label = []
@@ -81,9 +81,7 @@ class DenseFusion(chainer.Chain):
                 masked_pcd = pcd[:, pcd_indice]
                 rot, trans, conf, h_img_var = self.posenet.predict_each(
                     masked_img, masked_pcd, pcd_indice, bb_lbl)
-                # quaternion -> rotation matrix
-                pse = quaternion_to_rotation_matrix(rot)
-                pse[3, :3] = trans
+                pse = generate_pose(rot, trans)
 
                 for _ in range(self.n_iter):
                     # refiner
@@ -102,10 +100,7 @@ class DenseFusion(chainer.Chain):
                     refine_trans = cuda.to_cpu(
                         refine_cls_trans.array)[0, bb_lbl]
                     refine_rot = refine_rot / np.linalg.norm(refine_rot)
-
-                    # quaternion -> rotation matrix
-                    refine_pse = quaternion_to_rotation_matrix(refine_rot)
-                    refine_pse[3, :3] = refine_trans
+                    refine_pse = generate_pose(refine_rot, refine_trans)
                     pse = np.dot(refine_pse, pse)
 
                 pose.append(pse[None])

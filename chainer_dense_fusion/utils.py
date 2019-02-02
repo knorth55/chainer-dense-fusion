@@ -1,8 +1,8 @@
 import numpy as np
 
 
-def generate_organized_pcd(img, depth, intrinsic):
-    H, W = img.shape[1:]
+def generate_organized_pcd(depth, intrinsic):
+    H, W = depth.shape
     fx, fy, cx, cy = intrinsic
     xmap = np.array(
         [[j for i in range(W)] for j in range(H)],
@@ -15,6 +15,12 @@ def generate_organized_pcd(img, depth, intrinsic):
     organized_pcd = np.concatenate(
         (pcd_x[None], pcd_y[None], depth[None]), axis=0)
     return organized_pcd
+
+
+def generate_pose(rot, trans):
+    pose = quaternion_to_rotation_matrix(rot)
+    pose[3, :3] = trans
+    return pose
 
 
 def quaternion_to_rotation_matrix(quat):
