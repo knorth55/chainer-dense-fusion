@@ -96,7 +96,7 @@ class PoseNet(chainer.Chain):
         cls_rot = cls_rot.reshape((B, self.n_fg_class, 4, self.n_point))
         cls_trans = cls_trans.reshape((B, self.n_fg_class, 3, self.n_point))
         cls_conf = cls_conf.reshape((B, self.n_fg_class, self.n_point))
-        return cls_rot, cls_trans, cls_conf
+        return cls_rot, cls_trans, cls_conf, h_img
 
     def prepare(self, img):
         img = ((img - self.mean) / self.std).astype(np.float32, copy=False)
@@ -158,7 +158,7 @@ class PoseNet(chainer.Chain):
                 self.xp.array(masked_pcd[None]))
             pcd_indice_var = chainer.Variable(
                     self.xp.array(pcd_indice[None]))
-            cls_rot, cls_trans, cls_conf = \
+            cls_rot, cls_trans, cls_conf, h_img = \
                 self.__call__(
                     masked_img_var, masked_pcd_var, pcd_indice_var)
 
@@ -179,7 +179,7 @@ class PoseNet(chainer.Chain):
         max_rot = rot[maxid]
         max_trans = trans[maxid]
         max_conf = conf[maxid]
-        return max_rot, max_trans, max_conf
+        return max_rot, max_trans, max_conf, h_img
 
     def predict(self, imgs, depths, lbl_imgs, bboxes, bbox_labels, intrinsics):
         prepared_imgs = []
@@ -215,7 +215,7 @@ class PoseNet(chainer.Chain):
                 pcd = organized_pcd[:, ymin:ymax, xmin:xmax].reshape((3, -1))
                 masked_img = img[:, ymin:ymax, xmin:xmax]
                 masked_pcd = pcd[:, pcd_indice]
-                rot, trans, conf = self.predict_each(
+                rot, trans, conf, _ = self.predict_each(
                     masked_img, masked_pcd, pcd_indice, bb_lbl)
 
                 # quaternion -> rotation matrix
