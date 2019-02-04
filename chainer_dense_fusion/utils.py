@@ -4,12 +4,8 @@ import numpy as np
 def generate_organized_pcd(depth, intrinsic):
     H, W = depth.shape
     fx, fy, cx, cy = intrinsic
-    xmap = np.array(
-        [[j for i in range(W)] for j in range(H)],
-        dtype=np.float32)
-    ymap = np.array(
-        [[i for i in range(W)] for j in range(H)],
-        dtype=np.float32)
+    xmap = np.repeat(np.arange(H)[:, None], W, 1).astype(np.float32)
+    ymap = np.repeat(np.arange(W)[None], H, 0).astype(np.float32)
     pcd_x = (ymap - cx) * depth / fx
     pcd_y = (xmap - cy) * depth / fy
     organized_pcd = np.concatenate(
