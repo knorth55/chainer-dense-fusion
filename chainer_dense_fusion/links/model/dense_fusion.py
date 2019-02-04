@@ -83,11 +83,12 @@ class DenseFusion(chainer.Chain):
                     masked_img, masked_pcd, pcd_indice, bb_lbl)
                 pse = generate_pose(rot, trans)
 
+                # refiner
                 for _ in range(self.n_iter):
-                    # refiner
-                    refine_pcd = masked_pcd.transpose((1, 0)) - pse[3, :3]
-                    refine_pcd = np.dot(refine_pcd, pse[:3, :3].T)
-                    refine_pcd = refine_pcd.transpose((1, 0))
+                    # translate: (Tx, Ty, Tz).T, rotation: R.T
+                    # (x', y', z').T = R.T.T * ((x, y, z).T - (Tx, Ty, Tz).T)
+                    refine_pcd = masked_pcd - pse[3, :3, None]
+                    refine_pcd = np.dot(pse[:3, :3], refine_pcd)
                     with chainer.using_config('train', False), \
                             chainer.function.no_backprop_mode():
                         refine_pcd_var = chainer.Variable(
