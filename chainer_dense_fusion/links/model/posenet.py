@@ -165,14 +165,17 @@ class PoseNet(chainer.Chain):
                     masked_img_var, masked_pcd_var, pcd_indice_var)
 
         # variable -> cpu array
+        # (B, C, 4, N) -> (4, N)
         rot = cuda.to_cpu(cls_rot.array)[0, bb_lbl]
+        # (B, C, 3, N) -> (3, N)
         trans = cuda.to_cpu(cls_trans.array)[0, bb_lbl]
+        # (B, C, N) -> (N, )
         conf = cuda.to_cpu(cls_conf.array)[0, bb_lbl]
 
-        # (B, C, 4, N) -> (N, 4)
+        # (4, N) -> (N, 4)
         rot = rot.transpose((1, 0))
         rot = rot / np.linalg.norm(rot, axis=1)[:, None]
-        # (B, C, 3, N) -> (N, 3)
+        # (3, N) -> (N, 3)
         trans = trans.transpose((1, 0))
         trans = trans + masked_pcd.transpose((1, 0))
 
