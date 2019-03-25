@@ -17,19 +17,15 @@ class PoseNetTrainChain(chainer.Chain):
         super(PoseNetTrainChain, self).__init__()
         self.posenet = posenet
 
-    def __call__(
-        self, imgs, depths, lbl_imgs, bboxes, bbox_labels,
-        poses, pose_labels, intrinsics
-    ):
+    def __call__(self, imgs, depths, lbl_imgs, poses, pose_labels, intrinsics):
+
         prepared_imgs = []
         for img in imgs:
             img = self.prepare(img.astype(np.float32))
             prepared_imgs.append(img)
 
-        for img, depth, lbl_img, bbox, bbox_label, \
-            pose, pose_label, intrinsic in zip(
-                imgs, depths, lbl_imgs, bboxes, bbox_labels,
-                poses, pose_labels, intrinsics):
+        for img, depth, lbl_img, pose, pose_label, intrinsic in zip(
+                imgs, depths, lbl_imgs, poses, pose_labels, intrinsics):
 
             # generete organized pcd
             organized_pcd = generate_organized_pcd(depth, intrinsic)
