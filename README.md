@@ -1,7 +1,7 @@
 chainer-dense-fusion
 ====================
 
-![Build Status](https://travis-ci.com/knorth55/chainer-dense-fusion.svg?branch=master)
+[![Build Status](https://travis-ci.com/knorth55/chainer-dense-fusion.svg?branch=master)](https://travis-ci.com/knorth55/chainer-dense-fusion)
 
 <img src="_static/example.png" width="75%" />
 
